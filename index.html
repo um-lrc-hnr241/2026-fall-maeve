@@ -3,30 +3,54 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Our Portfolio Site</title>
+  <title>Descartes &amp; the Meditations | HNR 241</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
 
   <header class="site-header">
-    <p class="site-title"><a href="index.html">Our Portfolio Site</a></p>
-    <nav aria-label="Main">
+    <p class="site-title"><a href="index.html">Descartes <span aria-hidden="true">&amp;</span> the Meditations</a></p>
+    <nav aria-label="Main navigation">
       <ul>
-        <li><a href="index.html" aria-current="page">Home</a></li>
+        <li><a href="index.html" aria-current="page">Introduction</a></li>
+        <li><a href="founders.html">Founders</a></li>
+        <li><a href="hosts.html">Hosts</a></li>
+        <li><a href="journal.html">Journal</a></li>
+        <li><a href="illustrations.html">Illustrations</a></li>
       </ul>
     </nav>
   </header>
 
   <main id="main">
-    <h1>Welcome</h1>
-    <p>This is your group's starter site. Nothing here is final.</p>
-    <p>Fill in your planning Doc, then leave a comment that starts with
-      <code>@agent build</code> to have the agent replace this page with your own.</p>
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">HNR 241 · A group portfolio</p>
+      <h1 id="page-title">Reading <em>Meditations</em></h1>
+      <p class="hero-intro">A collection of reflections, conversations, and images inspired by René Descartes and his <em>Meditations on First Philosophy</em>.</p>
+      <div class="piano-rule" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </section>
+
+    <section class="content-section" aria-labelledby="about-title">
+      <p class="eyebrow">The text &amp; its questions</p>
+      <h2 id="about-title">Begin with a question</h2>
+      <p>What can we know with certainty? In the <em>Meditations</em>, Descartes puts familiar beliefs to the test, asking what remains when he doubts what the senses tell him and even questions the world around him.</p>
+      <p>Across six meditations, he considers radical doubt, the famous claim “I am, I exist,” the idea of God, and the distinction between mind and body. This portfolio follows our group’s encounters with those arguments: what persuaded us, what puzzled us, and what we are still thinking through.</p>
+    </section>
+
+    <section class="content-section" aria-labelledby="explore-title">
+      <p class="eyebrow">Explore the portfolio</p>
+      <h2 id="explore-title">Six voices, one conversation</h2>
+      <div class="page-cards">
+        <a class="page-card" href="founders.html"><span class="card-label">Meet the group</span><strong>The Founders</strong><span>Get to know the people behind this project.</span></a>
+        <a class="page-card" href="hosts.html"><span class="card-label">Individual perspectives</span><strong>Hosts &amp; essays</strong><span>Read each member’s response to the text.</span></a>
+        <a class="page-card" href="journal.html"><span class="card-label">Notes along the way</span><strong>Journal entries</strong><span>Follow the group’s reading and reflections.</span></a>
+        <a class="page-card" href="illustrations.html"><span class="card-label">A visual reading</span><strong>Illustrations</strong><span>Browse images gathered for the project.</span></a>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
-    <p>Built by our group with help from an AI agent.</p>
+    <p>A student group portfolio on Descartes and the <em>Meditations</em>.</p>
   </footer>
 </body>
 </html>
