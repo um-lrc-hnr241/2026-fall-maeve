@@ -163,21 +163,35 @@ main {
   text-transform: uppercase;
 }
 
+/* Two octaves, C to B: one span per key, in keyboard order. */
 .piano-rule {
   display: flex;
-  justify-content: center;
-  gap: 0.2rem;
-  width: min(14rem, 70%);
-  height: 1rem;
+  box-sizing: content-box;
+  width: min(10.5rem, 70%);
+  height: 2rem;
   margin: 2rem auto 0;
-  border: 1px solid var(--text);
-  background: repeating-linear-gradient(90deg, var(--paper) 0 1.7rem, var(--text) 1.7rem 1.82rem);
+  border: solid var(--text);
+  border-width: 3px 1px 1px 0;
+  background: var(--paper);
 }
 
 .piano-rule span {
-  display: block;
-  width: 0.72rem;
-  height: 0.62rem;
+  flex: 1;
+  border-left: 1px solid var(--text);
+}
+
+/* The sharps: 7/168 of the width, centred on the line between two naturals. */
+.piano-rule span:nth-child(12n + 2),
+.piano-rule span:nth-child(12n + 4),
+.piano-rule span:nth-child(12n + 7),
+.piano-rule span:nth-child(12n + 9),
+.piano-rule span:nth-child(12n + 11) {
+  z-index: 1;
+  flex: none;
+  width: calc(100% * 7 / 168);
+  height: 62.5%;
+  margin: 0 calc(100% * -4 / 168) 0 calc(100% * -3 / 168);
+  border: 0;
   background: var(--text);
 }
 
