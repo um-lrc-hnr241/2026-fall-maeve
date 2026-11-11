@@ -174,20 +174,6 @@
   text-align: center;
 }
 
-.player-piano-new {
-  position: absolute;
-  top: -0.5rem;
-  right: -0.4rem;
-  padding: 0.14rem 0.32rem;
-  border-radius: 999px;
-  background: #fde047;
-  box-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.25);
-  color: #3b0764;
-  font-size: 0.55rem;
-  letter-spacing: 0.08em;
-  transform: rotate(8deg);
-}
-
 .player-piano-toggle[aria-pressed="true"] {
   box-shadow: 0 0 0.8rem rgba(219, 39, 119, 0.7), 0 0 1.4rem rgba(124, 58, 237, 0.5);
   animation: player-piano-pulse 1.25s ease-in-out infinite;
@@ -536,7 +522,6 @@
       <span class="player-piano-icon" aria-hidden="true">🎹</span>
       <span class="player-piano-name">Mariposa Saloon Player Piano</span>
       <span class="player-piano-state" aria-hidden="true">OFF</span>
-      <span class="player-piano-new" aria-hidden="true">NEW</span>
     </button>`;
   (menu || header).appendChild(item);
   const button = item.querySelector('button');
