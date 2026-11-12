@@ -163,12 +163,13 @@ main {
   text-transform: uppercase;
 }
 
-/* Two octaves, C to B: one span per key, in keyboard order. */
+/* The full keyboard, A0 to C8: one span per key, in keyboard order. */
 .piano-rule {
   display: flex;
   box-sizing: content-box;
-  width: min(10.5rem, 70%);
-  height: 2rem;
+  width: min(39rem, 100% - 1px);
+  height: min(4.5rem, 10.5vw);
+  height: round(min(4.5rem, 10.5vw), 1px);   /* whole pixels, where round() is understood */
   margin: 2rem auto 0;
   border: solid var(--text);
   border-width: 3px 1px 1px 0;
@@ -180,17 +181,17 @@ main {
   border-left: 1px solid var(--text);
 }
 
-/* The sharps: 7/168 of the width, centred on the line between two naturals. */
+/* The sharps: 7/624 of the width, centred on the line between two naturals. */
+.piano-rule span:nth-child(12n),
 .piano-rule span:nth-child(12n + 2),
-.piano-rule span:nth-child(12n + 4),
+.piano-rule span:nth-child(12n + 5),
 .piano-rule span:nth-child(12n + 7),
-.piano-rule span:nth-child(12n + 9),
-.piano-rule span:nth-child(12n + 11) {
+.piano-rule span:nth-child(12n + 10) {
   z-index: 1;
   flex: none;
-  width: calc(100% * 7 / 168);
+  width: calc(100% * 7 / 624);
   height: 62.5%;
-  margin: 0 calc(100% * -4 / 168) 0 calc(100% * -3 / 168);
+  margin: 0 calc(100% * -4 / 624) 0 calc(100% * -3 / 624);
   border: 0;
   background: var(--text);
 }

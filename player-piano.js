@@ -16,6 +16,15 @@
  * which is in the public domain. The wording follows the 1901 edition, p. 232:
  * https://archive.org/details/methodmeditatio00desc
  *
+ * The piano: each note is a sum of decaying partials, rendered when the piano
+ * is first switched on. Most of its figures were fitted to notes measured from
+ * the FluidR3 GM piano; none of that audio is included. Sources:
+ * B. Bank, F. Avanzini, G. Borin, G. De Poli, F. Fontana, D. Rocchesso, "Physically informed signal processing methods for piano sound synthesis: a research overview" (2003): the stiff-string partial series; beating and two-stage decay as sums of damped sinusoids.
+ * J. O. Smith III, "Physical Audio Signal Processing" (online book, 2010): the lossy stiff-string equation, whose second loss term grows with frequency; the hammer as a filter set by its speed.
+ * G. Weinreich, "The coupled motion of piano strings" (lecture, 1990): prompt sound and aftersound from strings slightly out of tune with each other.
+ * A. Askenfelt, E. Jansson, "From touch to string vibration" (lecture, 1990): hammer contact shortens up the keyboard and with harder blows, which brightens the tone.
+ * D. E. Hall, "The hammer and the string" (lecture, 1990): the striking point near an eighth of the string, and the gaps it leaves in the spectrum.
+ *
  * This file is self-contained. The notes, the instrument, the control and its
  * styles all live here, and nothing is requested from the network.
  */
@@ -565,14 +574,16 @@
   const [notesPlayed, uptime] = card.querySelectorAll('dd');
 
   // The keyboard drawn in the hero, where there is one. Its keys are in
-  // keyboard order, so key = octave * 12 + pitch class.
+  // keyboard order. One that declares its lowest pitch lights each note's own
+  // key; otherwise key = octave * 12 + pitch class.
   const keyboard = document.querySelector('.piano-rule');
   const keys = keyboard ? Array.from(keyboard.children) : [];
   const octaves = Math.floor(keys.length / 12);
+  const lowest = keyboard && keyboard.hasAttribute('data-low') ? Number(keyboard.dataset.low) : NaN;
   const lit = keys.map(() => false);
   for (const note of notes) {
     // The left hand plays the lowest octave drawn, the right hand the highest.
-    note.key = (note.right ? octaves - 1 : 0) * 12 + (note.pitch % 12);
+    note.key = isNaN(lowest) ? (note.right ? octaves - 1 : 0) * 12 + (note.pitch % 12) : note.pitch - lowest;
   }
 
   // While the keyboard plays, the passage of the Meditations it brings to mind
@@ -654,6 +665,8 @@
   // clear of clipping.
   const VOLUME = 0.75;
 
+  const touchOf = (note) => (note.lead ? 1.25 : note.right ? 0.85 : note.pitch < 53 ? 0.9 : 0.72);
+
   // The harmonic recipe of a struck string, as a wave table. The hammer meets
   // the string about an eighth of the way along, which thins out every eighth
   // harmonic, and its felt rounds off the top; a larger "brightness" keeps
@@ -683,6 +696,121 @@
       }
     }
     return impulse;
+  }
+
+  // The grand piano. A note is a sum of decaying partials, rendered once and kept.
+  const LEVEL = 0.165;
+  const SOUNDBOARD = [0.8, 2.4, -0.2, -3.4, -3.9, 2.7, 3.0, -1.4];   // soundboard colour in dB, at 62.5 Hz and each octave above
+
+  function soundboard(hertz) {
+    const at = Math.min(6.999, Math.max(0, Math.log2(hertz / 62.5)));
+    const i = Math.floor(at);
+    return Math.pow(10, (SOUNDBOARD[i] + (SOUNDBOARD[i + 1] - SOUNDBOARD[i]) * (at - i)) / 20);
+  }
+
+  // One decaying partial, added to "sum": y[n] = 2r cos(w) y[n-1] - r^2 y[n-2].
+  function partial(sum, hertz, level, loss, phase, rate) {
+    if (level < 0.001) return;
+    const w = (2 * Math.PI * hertz) / rate;
+    const r = Math.exp(-loss / rate);
+    const a = 2 * r * Math.cos(w);
+    const b = r * r;
+    const count = Math.min(sum.length, Math.ceil((6.9 / loss) * rate));   // until it is 60 dB down
+    let y1 = (level / r) * Math.sin(phase - w);
+    let y2 = (level / b) * Math.sin(phase - 2 * w);
+    for (let n = 0; n < count; n++) {
+      const y = a * y1 - b * y2;
+      sum[n] += y;
+      y2 = y1;
+      y1 = y;
+    }
+  }
+
+  function hammered(pitch, touch, rate, seconds) {
+    const sum = new Float64Array(Math.ceil(seconds * rate));
+    const octave = (pitch - 60) / 12;
+    const f0 = 440 * Math.pow(2, (pitch - 69) / 12);
+    const stiffness = 2.9e-4 * Math.pow(10, 0.0342 * (pitch - 60));
+    // A harder blow compresses the felt, which shortens the contact and
+    // lets more of the upper partials through.
+    const cutoff = 3500 * Math.pow(2, 0.29 * octave) * Math.pow(touch / 0.9, 0.3);
+    const slope = 0.87 + 0.17 * Math.pow(Math.max(0, octave), 2);
+    const strings = pitch < 36 ? 1 : pitch < 48 ? 2 : 3;
+    let seed = pitch * 1901;
+    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+    for (let k = 1; ; k++) {
+      const hertz = k * f0 * Math.sqrt(1 + stiffness * k * k);   // a stiff string runs sharp
+      if (hertz > Math.min(10000, 0.45 * rate)) break;
+      // The hammer lands 1/7.4 of the way along, starving partials with a node there.
+      const level = ((Math.abs(Math.sin((Math.PI * k) / 7.4)) + 0.06) * Math.pow(k, -slope) * soundboard(hertz))
+        / Math.sqrt(1 + Math.pow(hertz / cutoff, 2));
+      // Decay in dB per second, growing with the square of frequency; then in nepers.
+      const loss = (18.4 * Math.pow(2, 0.74 * octave) + 1.07 * Math.pow(hertz / 1000, 2) * Math.pow(2, -0.66 * octave)) / 8.686;
+      // Strings moving together give their energy to the bridge quickly. Their
+      // motion against each other lingers and beats: the aftersound.
+      partial(sum, hertz, level, loss, random() * 6.2832, rate);
+      for (let i = 1; i < strings; i++) {
+        partial(sum, hertz * (i === 1 ? 1.0006 : 0.9996), (level * 0.28) / (strings - 1), loss * 0.46, random() * 6.2832, rate);
+      }
+    }
+
+    const rise = Math.round(0.0234 * Math.pow(2, -0.42 * octave) * rate);
+    for (let n = 0; n < rise; n++) sum[n] *= 0.5 - 0.5 * Math.cos((Math.PI * n) / rise);
+    let peak = 0;
+    for (let n = 0; n < sum.length; n++) peak = Math.max(peak, Math.abs(sum[n]));
+
+    // The knock of the action: a short burst of low noise under the attack.
+    const smoothing = 1 - Math.exp((-2 * Math.PI * 800) / rate);
+    const knock = (0.3 * peak) / (0.289 * Math.sqrt(smoothing / (2 - smoothing)));
+    let low = 0;
+    for (let n = 0; n < Math.min(sum.length, 0.12 * rate); n++) {
+      low += (random() - 0.5 - low) * smoothing;
+      sum[n] += knock * low * (1 - Math.exp(-n / (0.004 * rate))) * Math.exp(-n / (0.022 * rate));
+    }
+
+    const samples = new Float32Array(sum.length);
+    for (let n = 0; n < sum.length; n++) samples[n] = (sum[n] * LEVEL * touch) / peak;
+    return samples;
+  }
+
+  // Every note the roll needs, rendered a few at a time so the page stays
+  // responsive, and kept for later runs. Resolves false if that fails or drags.
+  const grand = new Map();
+  let tuning = null;
+
+  function renderGrand(ctx) {
+    tuning = tuning || new Promise((resolve) => {
+      const longest = new Map();
+      for (const note of notes) {
+        const id = `${note.pitch}/${touchOf(note)}`;
+        if (!grand.has(id)) longest.set(id, Math.max(longest.get(id) || 0, note.length));
+      }
+      const waiting = Array.from(longest);
+      const began = performance.now();
+      setTimeout(function some() {
+        try {
+          const pause = performance.now() + 20;
+          while (waiting.length && performance.now() < pause) {
+            const [id, length] = waiting.pop();
+            const [pitch, touch] = id.split('/').map(Number);
+            const samples = hammered(pitch, touch, ctx.sampleRate, length * STEP * 0.9 + 0.3);
+            const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+            buffer.copyToChannel(samples, 0);
+            grand.set(id, buffer);
+          }
+          if (!waiting.length) resolve(true);
+          else if (performance.now() - began > 4000) resolve(false);
+          else setTimeout(some);
+        } catch (error) {
+          resolve(false);
+        }
+      });
+    }).then((tuned) => {
+      if (!tuned) tuning = null;
+      return tuned;
+    });
+    return tuning;
   }
 
   function buildPiano(ctx) {
@@ -740,7 +868,7 @@
       const register = registers.find((r) => pitch < r.below);
       // Voicing: the tune sings out, the bass is firm, and the chords in
       // both hands sit back. "trim" evens out the loudness of the registers.
-      const touch = note.lead ? 1.25 : note.right ? 0.85 : pitch < 53 ? 0.9 : 0.72;
+      const touch = touchOf(note);
       const level = 0.031 * touch * register.trim;
       const ring = 1.1 * Math.pow(2, (60 - pitch) / 20);   // low strings ring longer
       // Every key is a shade out of tune in its own way, the same way each time.
@@ -762,7 +890,20 @@
       blow.setTargetAtTime(0, release, 0.04);
     }
 
-    return { strike, master };
+    // The same note on the grand: its buffer, and the damper.
+    function hammer(note, when) {
+      const source = ctx.createBufferSource();
+      const damper = ctx.createGain();
+      const release = when + note.length * STEP * 0.9;
+      source.buffer = grand.get(`${note.pitch}/${touchOf(note)}`);
+      source.connect(damper);
+      damper.connect(strings);
+      damper.gain.setTargetAtTime(0, release, 0.05);
+      source.start(when);
+      source.stop(release + 0.3);
+    }
+
+    return { strike, hammer, master };
   }
 
   /* ----------------------------------------------------------- The transport */
@@ -840,6 +981,16 @@
   function begin(s) {
     s.begun = true;
     s.piano = buildPiano(s.ctx);
+    show(true);
+    remember(s, s.bar);
+    // The grand plays once its notes are rendered; failing that, the oscillators do.
+    renderGrand(s.ctx).then((tuned) => {
+      if (session === s) play(s, tuned ? s.piano.hammer : s.piano.strike);
+    });
+  }
+
+  function play(s, strike) {
+    s.strike = strike;
     s.from = s.bar * BAR;
     s.origin = s.ctx.currentTime + LEAD - s.from * STEP;   // when the top of the roll passed, or will
     s.lap = 0;
@@ -847,8 +998,6 @@
     pump();
     s.timer = setInterval(pump, TICK);
     if (octaves && !calm.matches) s.frame = requestAnimationFrame(draw);
-    show(true);
-    remember(s, s.bar);
   }
 
   // The scheduler. The audio clock is exact and timers are not, so each visit
@@ -864,7 +1013,7 @@
       const when = s.origin + (s.lap * total + note.start) * STEP;
       if (when > now + LOOKAHEAD) break;
       if (when >= now) {
-        s.piano.strike(note, when);
+        s.strike(note, when);
         s.due.push(when);
       }
       s.next += 1;
@@ -987,7 +1136,7 @@
   window.addEventListener('pagehide', () => {
     const s = session;
     if (s && s.begun) {
-      const bar = Math.floor((((position(s) % total) + total) % total) / BAR);
+      const bar = s.strike ? Math.floor((((position(s) % total) + total) % total) / BAR) : s.bar;
       remember(s, bar);
     }
     stop(true);
@@ -1003,7 +1152,7 @@
   if (calm.addEventListener) {
     calm.addEventListener('change', () => {
       const s = session;
-      if (!s || !s.begun || !octaves) return;
+      if (!s || !s.strike || !octaves) return;
       cancelAnimationFrame(s.frame);
       if (calm.matches) releaseKeys();
       else s.frame = requestAnimationFrame(draw);
